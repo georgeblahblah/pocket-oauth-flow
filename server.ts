@@ -19,7 +19,7 @@ const config = {
   redirectUri: `http://localhost:${port}/callback`,
 };
 
-const log = (text: string): void => console.log(`[pocket-oauth-flow]: ${text}`);
+const log = (text: any): void => console.log(`[pocket-oauth-flow]: ${text}`);
 
 const htmlResponse = (html: string): Response =>
   new Response(html, {
@@ -32,16 +32,18 @@ const handler = async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   const path = url.pathname;
   log(`Received request to ${path}`);
+  const requestToken = await getRequestToken();
   switch (path) {
     case "/": {
-      const requestToken = await getRequestToken();
       const url = new URL(`https://getpocket.com/auth/authorize`);
       url.searchParams.append("request_token", requestToken);
       url.searchParams.append("redirect_uri", config.redirectUri);
       return Response.redirect(url.toString());
     }
-    case "/callback":
-      return new Response("");
+    case "/callback": {
+      const accessToken = await convertRequestTokenToAccessToken(requestToken);
+      return new Response(accessToken);
+    }
     default:
       return new Response("Unhandled path");
   }
@@ -64,4 +66,29 @@ async function getRequestToken(): Promise<string> {
   });
   const json = (await resp.json()) as { code: string };
   return json.code;
+}
+
+async function convertRequestTokenToAccessToken(
+  requestToken: string
+): Promise<string> {
+  const resp = await fetch(`https://getpocket.com/v3/oauth/authorize`, {
+    method: "POST",
+    body: JSON.stringify({
+      consumer_key: config.consumerKey,
+      code: requestToken,
+    }),
+    headers: {
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Accept": "application/json",
+    },
+  });
+  log(await resp.text());
+  let headersStr = "";
+  for (const header of resp.headers.entries()) {
+    headersStr += `${header[0]}: ${header[1]}\n`;
+  }
+  console.log(headersStr);
+  const json = (await resp.json()) as { access_token: string };
+  console.log(json.access_token);
+  return json.access_token;
 }
