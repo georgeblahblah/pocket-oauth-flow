@@ -11,15 +11,13 @@ const portWithDefault = (defaultPort: number): number => {
   }
   return defaultPort;
 };
+const log = (text: any): void => console.log(`[pocket-oauth-flow]: ${text}`);
 
 const port = portWithDefault(8080);
-
 const config = {
   consumerKey: Deno.env.get("CONSUMER_KEY") || "",
   redirectUri: `http://localhost:${port}/callback`,
 };
-
-const log = (text: any): void => console.log(`[pocket-oauth-flow]: ${text}`);
 
 const htmlResponse = (html: string): Response =>
   new Response(html, {
@@ -27,6 +25,7 @@ const htmlResponse = (html: string): Response =>
       "content-type": "text/html; charset=utf-8",
     },
   });
+
 const requestToken = await getRequestToken();
 
 const handler = async (request: Request): Promise<Response> => {
@@ -49,21 +48,26 @@ const handler = async (request: Request): Promise<Response> => {
   }
 };
 
-log(`Webserver running at http://localhost:${port}`);
-serve(handler, { port });
-
-async function getRequestToken(): Promise<string> {
-  const resp = await fetch("https://getpocket.com/v3/oauth/request", {
+async function post(url: string, body: string): Promise<Response> {
+  return fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json; charset=UTF8",
       "X-Accept": "application/json",
     },
-    body: JSON.stringify({
+    body,
+  });
+}
+
+async function getRequestToken(): Promise<string> {
+  log("Fetching request token");
+  const resp = await post(
+    "https://getpocket.com/v3/oauth/request",
+    JSON.stringify({
       consumer_key: config.consumerKey,
       redirect_uri: config.redirectUri,
-    }),
-  });
+    })
+  );
   const json = (await resp.json()) as { code: string };
   return json.code;
 }
@@ -71,17 +75,17 @@ async function getRequestToken(): Promise<string> {
 async function convertRequestTokenToAccessToken(
   requestToken: string
 ): Promise<string> {
-  const resp = await fetch(`https://getpocket.com/v3/oauth/authorize`, {
-    method: "POST",
-    body: JSON.stringify({
+  log("Converting request token to access token");
+  const resp = await post(
+    `https://getpocket.com/v3/oauth/authorize`,
+    JSON.stringify({
       consumer_key: config.consumerKey,
       code: requestToken,
-    }),
-    headers: {
-      "Content-Type": "application/json; charset=UTF-8",
-      "X-Accept": "application/json",
-    },
-  });
+    })
+  );
   const json = (await resp.json()) as { access_token: string };
   return json.access_token;
 }
+
+log(`Webserver running at http://localhost:${port}`);
+serve(handler, { port });
