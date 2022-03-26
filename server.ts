@@ -27,12 +27,12 @@ const htmlResponse = (html: string): Response =>
       "content-type": "text/html; charset=utf-8",
     },
   });
+const requestToken = await getRequestToken();
 
 const handler = async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
   const path = url.pathname;
   log(`Received request to ${path}`);
-  const requestToken = await getRequestToken();
   switch (path) {
     case "/": {
       const url = new URL(`https://getpocket.com/auth/authorize`);
@@ -42,7 +42,7 @@ const handler = async (request: Request): Promise<Response> => {
     }
     case "/callback": {
       const accessToken = await convertRequestTokenToAccessToken(requestToken);
-      return new Response(accessToken);
+      return htmlResponse(`<h1>${accessToken}</h1>`);
     }
     default:
       return new Response("Unhandled path");
@@ -82,13 +82,6 @@ async function convertRequestTokenToAccessToken(
       "X-Accept": "application/json",
     },
   });
-  log(await resp.text());
-  let headersStr = "";
-  for (const header of resp.headers.entries()) {
-    headersStr += `${header[0]}: ${header[1]}\n`;
-  }
-  console.log(headersStr);
   const json = (await resp.json()) as { access_token: string };
-  console.log(json.access_token);
   return json.access_token;
 }
