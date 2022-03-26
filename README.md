@@ -9,4 +9,5 @@ This project uses [Deno](https://deno.land)
 
 ### Commands
 
-- `deno run --allow-env --allow-net server.ts`
+- `[PORT=9999] CONSUMER_KEY={{my_consumer_key}} script/server` to start the server
+  - Requires the `CONSUMER_KEY` environment variable
