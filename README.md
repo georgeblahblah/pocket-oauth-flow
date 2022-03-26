@@ -9,4 +9,4 @@ This project uses [Deno](https://deno.land)
 
 ### Commands
 
-- `deno run --allow-env=PORT --allow-net server.ts`
+- `deno run --allow-env --allow-net server.ts`
